@@ -1,0 +1,11 @@
+paths:
+  data_dir: "./data"
+  chroma_db_dir: "./db"
+
+chunking:
+  chunk_size: 1000
+  chunk_overlap: 200
+
+models:
+  embeddings: "nomic-embed-text"
+  llm: "llama3"
