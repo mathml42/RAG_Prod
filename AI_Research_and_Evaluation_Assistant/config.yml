@@ -7,5 +7,12 @@ chunking:
   chunk_overlap: 200
 
 models:
-  embeddings: "nomic-embed-text"
-  llm: "llama3"
+  embeddings: "nomic-embed-text-v2-moe:latest"
+  llm: "llama3.2:1b"
+
+retrieval:
+  k: 3  # Number of documents to retrieve
+
+generation:
+  temperature: 0.0  # Keep at 0 for factual RAG answers
+  num_ctx: 4096     # Token context window size
