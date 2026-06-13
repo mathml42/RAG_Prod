@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 def load_config(config_path="config.yml"):
     """Loads configuration settings from a YAML file."""
-    config_path = Path(__file__).parent / config_path
+    config_path = Path(__file__).parents[1] / config_path
     try:
         with open(config_path, "r") as f:
             return yaml.safe_load(f)
