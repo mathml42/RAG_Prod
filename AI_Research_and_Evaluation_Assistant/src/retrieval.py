@@ -11,7 +11,7 @@ logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger(__name__)
 
 def load_config(config_path="config.yml"):
-    config_path = Path(__file__).parent / config_path
+    config_path = Path(__file__).parents[1] / config_path
     with open(config_path, "r") as f:
         return yaml.safe_load(f)
 
@@ -23,7 +23,7 @@ def get_vector_db():
     # Initialize the EXACT same embedding model used during ingestion
     embeddings = OllamaEmbeddings(model=config["models"]["embeddings"])
     
-    # Connect to the existing database (Notice we drop 'from_documents')
+    # Connect to the existing database
     db = Chroma(persist_directory=db_dir, embedding_function=embeddings)
     return db, config
 
@@ -31,10 +31,13 @@ def test_similarity_search(query: str):
     """Executes a raw vector search and prints the mathematical scores."""
     db, config = get_vector_db()
     
-    logger.info(f"\n--- SIMILARITY SEARCH RESULTS FOR: '{query}' ---")
+    # Read retrieval hyperparameters from config
+    k = config.get("retrieval", {}).get("k", 3)
     
-    # k=3 means we want the top 3 closest chunks
-    results = db.similarity_search_with_score(query, k=config["retrieval"]["k"])
+    logger.info(f"\n--- SIMILARITY SEARCH RESULTS FOR: '{query}' ---")
+    logger.info(f"Retrieving top {k} chunks based on configuration...")
+    
+    results = db.similarity_search_with_score(query, k=k)
     
     if not results:
         logger.info("No results found. Is your database empty?")
@@ -43,24 +46,31 @@ def test_similarity_search(query: str):
     for i, (doc, score) in enumerate(results):
         logger.info(f"\nResult #{i+1} | L2 Distance Score: {score:.4f} (Lower is closer/better)")
         logger.info(f"Source: {doc.metadata.get('source')} | Page: {doc.metadata.get('page')}")
-        # Print the first 150 characters to see what it found
         logger.info(f"Preview: {doc.page_content[:150]}...")
 
 def run_rag_chain(query: str):
     """The full RAG Pipeline: Retrieve -> Augment -> Generate"""
     db, config = get_vector_db()
     
-    # 1. Initialize the LLM (e.g., llama3.2:1b)
-    llm = ChatOllama(model=config["models"]["llm"])
+    # Read hyperparameters from config
+    k = config.get("retrieval", {}).get("k", 3)
+    temperature = config.get("generation", {}).get("temperature", 0.0)
+    num_ctx = config.get("generation", {}).get("num_ctx", 4096)
     
-    # 2. Retrieve the top 3 documents
-    results = db.similarity_search(query, k=config["retrieval"]["k"])
+    # 1. Initialize the LLM with hyperparameters
+    llm = ChatOllama(
+        model=config["models"]["llm"],
+        temperature=temperature,
+        num_ctx=num_ctx
+    )
     
-    # 3. Augment: Combine the retrieved chunks into one big string of text
+    # 2. Retrieve the documents
+    results = db.similarity_search(query, k=k)
+    
+    # 3. Augment: Combine the retrieved chunks
     context_text = "\n\n---\n\n".join([doc.page_content for doc in results])
     
     # 4. Augment: Build the Prompt Template
-    # We explicitly tell the LLM to ONLY use the provided context to stop hallucinations.
     PROMPT_TEMPLATE = """
     You are an AI Research Assistant. Answer the question based ONLY on the following context:
     
@@ -70,14 +80,13 @@ def run_rag_chain(query: str):
     
     Question: {question}
     """
-    
     prompt = ChatPromptTemplate.from_template(PROMPT_TEMPLATE)
     
-    # 5. Build the LangChain Runnable Pipeline (Prompt -> LLM -> String Output)
+    # 5. Build the LangChain Runnable Pipeline
     chain = prompt | llm | StrOutputParser()
     
     logger.info(f"\n--- GENERATING RAG ANSWER FOR: '{query}' ---")
-    logger.info(f"Using Model: {config['models']['llm']}")
+    logger.info(f"Using Model: {config['models']['llm']} | Temp: {temperature} | Context Window: {num_ctx}")
     
     # 6. Generate the answer!
     response = chain.invoke({
@@ -90,7 +99,7 @@ def run_rag_chain(query: str):
 
 if __name__ == "__main__":
     # Feel free to change this question to something relevant to your PDFs!
-    sample_question = "What is the main topic of the documents provided?"
+    sample_question = "What is the transformer?"
     
     # Step 1: See the raw mathematical search results
     test_similarity_search(sample_question)
