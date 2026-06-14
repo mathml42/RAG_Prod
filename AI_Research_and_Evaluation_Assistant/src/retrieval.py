@@ -5,6 +5,7 @@ from langchain_chroma import Chroma
 from langchain_ollama import OllamaEmbeddings, ChatOllama
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
+from langchain_core.globals import set_debug
 
 # Configure logging to keep output clean
 logging.basicConfig(level=logging.INFO, format="%(message)s")
@@ -56,6 +57,11 @@ def run_rag_chain(query: str):
     k = config.get("retrieval", {}).get("k", 3)
     temperature = config.get("generation", {}).get("temperature", 0.0)
     num_ctx = config.get("generation", {}).get("num_ctx", 4096)
+
+    # 0. Enable LangChain Debug Mode if set in config
+    if config.get("system", {}).get("debug", False):
+        logger.info("LangChain Debug Mode Enabled ->")
+        set_debug(True)
     
     # 1. Initialize the LLM with hyperparameters
     llm = ChatOllama(

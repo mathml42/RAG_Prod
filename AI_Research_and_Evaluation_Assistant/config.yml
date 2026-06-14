@@ -16,3 +16,6 @@ retrieval:
 generation:
   temperature: 0.0  # Keep at 0 for factual RAG answers
   num_ctx: 4096     # Token context window size
+
+system:
+  debug: true 
