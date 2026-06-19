@@ -2,3 +2,5 @@
 # any pdfs
 data/ 
 db/
+.env
+*.pyc
