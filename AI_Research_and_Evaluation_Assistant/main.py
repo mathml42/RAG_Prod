@@ -2,6 +2,20 @@ import streamlit as st
 import yaml
 from pathlib import Path
 import logging
+import os
+from dotenv import load_dotenv
+
+# 1. Load environment variables from your .env file
+load_dotenv()
+
+# 2. Enable LangSmith Tracing automatically if the key is found
+if os.getenv("LANGSMITH_API_KEY") or os.getenv("LANGCHAIN_API_KEY"):
+    os.environ["LANGCHAIN_TRACING_V2"] = "true"
+    os.environ["LANGCHAIN_ENDPOINT"] = "https://api.smith.langchain.com"
+    # Map your LANGSMITH_API_KEY to the official LANGCHAIN_API_KEY
+    os.environ["LANGCHAIN_API_KEY"] = os.getenv("LANGCHAIN_API_KEY", os.getenv("LANGSMITH_API_KEY"))
+    os.environ["LANGCHAIN_PROJECT"] = "AI_Research_Assistant"
+    logging.info("✅ LangSmith Tracing is ENABLED!")
 
 # AI & LangChain Imports
 from langchain_core.prompts import ChatPromptTemplate
