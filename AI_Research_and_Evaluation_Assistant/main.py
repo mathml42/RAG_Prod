@@ -64,43 +64,70 @@ def main():
         st.title("⚙️ Settings")
         
         with st.form("config_form"):
-            st.subheader("Models")
+            st.subheader("✂️ Document Chunking")
+            chunk_size = st.number_input("Chunk Size", value=config.get("chunking", {}).get("chunk_size", 1000), step=100)
+            chunk_overlap = st.number_input("Chunk Overlap", value=config.get("chunking", {}).get("chunk_overlap", 200), step=50)
+
+            st.subheader("🧠 Models")
             embeddings = st.text_input("Embeddings", value=config.get("models", {}).get("embeddings", "nomic-embed-text-v2-moe:latest"))
             llm = st.text_input("LLM", value=config.get("models", {}).get("llm", "llama3.2:1b"))
 
-            st.subheader("Retrieval")
+            st.subheader("🔍 Retrieval")
             k_val = st.number_input("Top-K Chunks", value=config.get("retrieval", {}).get("k", 4), min_value=1, max_value=10)
             
             current_method = config.get("retrieval", {}).get("method", "hybrid").lower()
             method = st.selectbox("Search Method", options=["hybrid", "semantic"], index=0 if current_method == "hybrid" else 1)
 
-            st.subheader("Generation")
+            st.subheader("⚡ Generation")
             temperature = st.slider("Temperature", min_value=0.0, max_value=1.0, value=float(config.get("generation", {}).get("temperature", 0.0)), step=0.1)
             num_ctx = st.number_input("Context Window", value=config.get("generation", {}).get("num_ctx", 4096), step=512)
             
             submitted = st.form_submit_button("💾 Save Config", use_container_width=True)
 
             if submitted:
+                # Initialize dictionaries if they don't exist
+                if "chunking" not in config: config["chunking"] = {}
+                if "models" not in config: config["models"] = {}
+                if "retrieval" not in config: config["retrieval"] = {}
+                if "generation" not in config: config["generation"] = {}
+
+                # Save all values
+                config["chunking"]["chunk_size"] = int(chunk_size)
+                config["chunking"]["chunk_overlap"] = int(chunk_overlap)
                 config["models"]["embeddings"] = embeddings
                 config["models"]["llm"] = llm
                 config["retrieval"]["k"] = int(k_val)
                 config["retrieval"]["method"] = method
                 config["generation"]["temperature"] = float(temperature)
                 config["generation"]["num_ctx"] = int(num_ctx)
+                
                 save_config(config)
                 st.success("Config saved!")
                 st.rerun()
 
-        # Database Management Section
+# Database Management Section
         st.write("---")
         st.subheader("🗄️ Database Management")
         st.caption("Re-run ingestion if you add new PDFs or change chunk sizes.")
         if st.button("🔄 Process Documents (Run Ingest)", use_container_width=True):
             if ingest_documents:
-                with st.spinner("Processing documents and building vector database..."):
+                with st.spinner("Clearing old database and building a new one..."):
                     try:
+                        import shutil
+                        import gc
+                        
+                        # 1. Force Python to release any open Chroma file locks
+                        gc.collect()
+                        
+                        # 2. Safely wipe the old database 
+                        # (Since you use WSL/Ubuntu, this will cleanly delete the directory)
+                        db_path = Path(config['paths']["chroma_db_dir"])
+                        if db_path.exists():
+                            shutil.rmtree(db_path, ignore_errors=True)
+                            
+                        # 3. Rebuild from scratch with the new chunk settings
                         ingest_documents()
-                        st.success("Database successfully updated!")
+                        st.success("Database successfully rebuilt with new settings!")
                     except Exception as e:
                         st.error(f"Ingestion failed: {str(e)}")
             else:
