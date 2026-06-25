@@ -2,16 +2,16 @@ paths:
   data_dir: ./data
   chroma_db_dir: ./db
 chunking:
-  chunk_size: 1000
-  chunk_overlap: 200
+  chunk_size: 500
+  chunk_overlap: 150
 models:
   embeddings: nomic-embed-text-v2-moe:latest
   llm: llama3.2:1b
 retrieval:
-  k: 5
+  k: 6
   method: hybrid
 generation:
-  temperature: 0.3
+  temperature: 0.2
   num_ctx: 4096
 system:
   debug: true
