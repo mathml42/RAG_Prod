@@ -123,7 +123,7 @@ def main():
                         # (Since you use WSL/Ubuntu, this will cleanly delete the directory)
                         db_path = Path(config['paths']["chroma_db_dir"])
                         if db_path.exists():
-                            shutil.rmtree(db_path, ignore_errors=True)
+                            shutil.rmtree(db_path)
                             
                         # 3. Rebuild from scratch with the new chunk settings
                         ingest_documents()
